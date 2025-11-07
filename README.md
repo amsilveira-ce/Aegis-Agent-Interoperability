@@ -1,150 +1,166 @@
 
-# Aegis: Implementando o Framework DAWN
+# Aegis: Implementing the DAWN Framework
 
-[](https://opensource.org/licenses/MIT)
-[](https://www.python.org/)
-[](https://fastapi.tiangolo.com/)
+Aegis is the reference implementation of **DAWN (Distributed Agent Workflow Network)** — an architectural framework designed to enable **universal interoperability, discovery, and collaboration among heterogeneous Artificial Intelligence agents**.
 
-O Aegis é a implementação de referência do **DAWN (Distributed Agent Workflow Network)**, um framework arquitetônico projetado para permitir a interoperabilidade universal, descoberta e colaboração entre agentes de Inteligência Artificial heterogêneos.
+---
 
-## 1\. O Problema: Silos de IA
+## 1. The Problem: AI Silos
 
-O cenário atual de IA é fragmentado. Agentes autônomos operam em ecossistemas isolados (como LangChain, crewAI, etc.), incapazes de colaborar com agentes externos. Isso leva à redundância de desenvolvimento e limita a complexidade dos problemas que podem ser resolvidos. O DAWN é proposto para quebrar esses silos, criando um padrão de comunicação para um ecossistema de IA verdadeiramente colaborativo.
+Today’s AI landscape is fragmented. Autonomous agents operate within isolated ecosystems (such as LangChain, CrewAI, etc.), unable to collaborate with external agents. This leads to redundant development and limits the complexity of solvable problems.
+DAWN is proposed to break these silos, creating a communication standard for a truly collaborative AI ecosystem.
 
-## 2\. A Solução: Framework DAWN
+---
 
-O DAWN propõe um modelo de orquestração de cima para baixo, centrado em dois componentes principais, para criar um mercado global e meritocrático de capacidades de IA.
+## 2. The Solution: DAWN Framework
 
-### Arquitetura Principal
+DAWN proposes a **top-down orchestration model**, centered around two main components, to build a **global and meritocratic marketplace of AI capabilities**.
 
-A arquitetura do DAWN é composta por três pilares:
+### Core Architecture
 
-1.  **Principal Agent (Agente Principal):** O orquestrador central. Ele recebe solicitações do usuário, as decompõe em tarefas, planeja a execução e gerencia o contexto.
-2.  **Gateway Agent (Agente de Gateway):** O registro de descoberta de serviços. Atua como um "catálogo inteligente" onde Agentes de Recurso (ferramentas, outros agentes) se registram e são descobertos com base em suas capacidades e métricas de desempenho (QoS).
-3.  **Resource Agent (Agente de Recurso):** Qualquer agente ou ferramenta especializada (ex: uma calculadora, um agente de busca na web, um modelo de IA especializado) que oferece uma capacidade específica.
+The DAWN architecture consists of three main pillars:
 
-## 3\. Componentes Core do Aegis
+1. **Principal Agent:** The central orchestrator. It receives user requests, decomposes them into tasks, plans execution, and manages context.
+2. **Gateway Agent:** The service discovery registry. Acts as an “intelligent catalog” where Resource Agents (tools or other agents) register and are discovered based on their capabilities and performance metrics (QoS).
+3. **Resource Agent:** Any specialized agent or tool (e.g., a calculator, web search agent, or specialized AI model) that provides a specific capability.
 
-Esta implementação no Aegis é dividida nos seguintes componentes principais, refletindo o blueprint do DAWN.
+---
+
+## 3. Aegis Core Components
+
+This Aegis implementation is divided into the following main components, reflecting the DAWN blueprint.
 
 ### 3.1. Principal Agent (`Aegis/core/principal_agent`)
 
-Atua como o cérebro central da orquestração.
+Acts as the central brain of orchestration.
 
 **Design Rationale:**
 
-  * **Modos de Operação Flexíveis:** Suporta modos `NO_LLM`, `ASSISTED` (Copilot), `AGENT` e `HYBRID`, permitindo alternar entre fluxos de trabalho determinísticos e autônomos.
-  * **Gerenciamento de Contexto:** Mantém um contexto hierárquico (`conversation_history`, `user_preferences`, `task_history`, `memory_bank`) para personalização e continuidade em tarefas complexas.
-  * **Estratégias de Raciocínio:** Projetado para implementar múltiplos "motores de raciocínio" (ex: ReAct, ReWOO, ToT) para decomposição de tarefas.
-  * **Cache de Recursos Locais:** Mantém um cache local de recursos para reduzir a sobrecarga de rede em consultas frequentes ao Gateway.
+* **Flexible Operation Modes:** Supports `NO_LLM`, `ASSISTED` (Copilot), `AGENT`, and `HYBRID` modes, allowing transitions between deterministic and autonomous workflows.
+* **Context Management:** Maintains a hierarchical context (`conversation_history`, `user_preferences`, `task_history`, `memory_bank`) for personalization and continuity across complex tasks.
+* **Reasoning Strategies:** Designed to implement multiple “reasoning engines” (e.g., ReAct, ReWOO, ToT) for task decomposition.
+* **Local Resource Cache:** Keeps a local cache of resources to reduce network overhead from frequent Gateway queries.
 
 **Schema (`principalAgent.py`):**
 
-  * `mode: OperationalMode`
-  * `gateway_agents: List[GatewayAgent]`
-  * `local_resources: Dict[str, Resource]`
-  * `task_queue: List[Task]`
-  * `execution_history: List[Dict]`
-  * `context: Dict`
-  * `reasoning_strategies: Dict`
+* `mode: OperationalMode`
+* `gateway_agents: List[GatewayAgent]`
+* `local_resources: Dict[str, Resource]`
+* `task_queue: List[Task]`
+* `execution_history: List[Dict]`
+* `context: Dict`
+* `reasoning_strategies: Dict`
+
+---
 
 ### 3.2. Gateway Agent (`Aegis/core/gateway_agent`)
 
-Gerencia o registro, validação e descoberta inteligente de todos os recursos disponíveis na rede.
+Manages registration, validation, and intelligent discovery of all resources available in the network.
 
 **Design Rationale:**
 
-  * **Registro de Índice Duplo:** Utiliza um `registry` (para busca O(1) por ID) e um `capability_index` (para descoberta O(1) por capacidade), essencial para alta performance.
-  * **Rastreamento de Desempenho (QoS):** Cada recurso registrado tem suas próprias métricas de desempenho (`performance_metrics`, `success_rate`, `avg_response_time`). Isso permite que o Gateway atue como um selecionador inteligente, ranqueando recursos não apenas pela capacidade, mas pela performance histórica.
-  * **Validação de Recursos:** Inclui `test_results` e `is_active`, permitindo que recursos com falha sejam graciosamente desativados sem serem removidos, garantindo a robustez do sistema.
+* **Dual Index Registry:** Uses a `registry` (for O(1) lookup by ID) and a `capability_index` (for O(1) discovery by capability) — essential for high performance.
+* **Performance Tracking (QoS):** Each registered resource includes its own performance metrics (`performance_metrics`, `success_rate`, `avg_response_time`). This allows the Gateway to act as an intelligent selector, ranking resources not only by capability but also by historical performance.
+* **Resource Validation:** Includes `test_results` and `is_active`, allowing failed resources to be gracefully deactivated without removal — ensuring system robustness.
 
-**Schema (`gatewayAgent.py` e `gatewayAgent_shcemas.py`):**
+**Schema (`gatewayAgent.py` and `gatewayAgent_schemas.py`):**
 
-  * `registry: Dict[str, RegisteredResource]`
-  * `capability_index: Dict[str, List[str]]`
-  * `security_filters: List[Callable]`
-  * `gateway_metrics: Dict`
-  * `RegisteredResource` (Schema):
-      * `id: str`
-      * `capabilities: List[str]`
-      * `endpoint: str`
-      * `api_shcema: Dict[str,Any]`
-      * `manifest: Dict[str,Any]`
-      * `performance_metrics: Dict[str, float]`
-      * `is_active: bool`
+* `registry: Dict[str, RegisteredResource]`
+* `capability_index: Dict[str, List[str]]`
+* `security_filters: List[Callable]`
+* `gateway_metrics: Dict`
+* `RegisteredResource` (Schema):
 
-## 4\. Stack de Tecnologia (MVP)
+  * `id: str`
+  * `capabilities: List[str]`
+  * `endpoint: str`
+  * `api_schema: Dict[str, Any]`
+  * `manifest: Dict[str, Any]`
+  * `performance_metrics: Dict[str, float]`
+  * `is_active: bool`
 
-A metodologia para o MVP deste projeto utilizará as seguintes tecnologias:
+---
 
-  * **Backend:** Python (FastAPI) e Node.js para os serviços dos agentes.
-  * **Protocolos:** A2A (Agent-to-Agent) para comunicação horizontal (Agente-Agente) e MCP (Model Context Protocol) para comunicação vertical (Agente-Ferramenta), sobre HTTP(S) com JSON-RPC 2.0.
-  * **Banco de Dados:** PostgreSQL para armazenamento persistente dos registros do Gateway, manifestos e métricas.
-  * **Mensageria:** Redis Streams ou NATS para comunicação assíncrona e gerenciamento de estado de tarefas.
-  * **Monitoramento:** Pilha Prometheus + Grafana para coleta de métricas de desempenho (latência, taxa de sucesso) em tempo real.
-  * **LLMs (Motores de Raciocínio):** Modelos como Granite, Mistral e Llama2 (via API) para o Agente Principal.
+## 4. Technology Stack (MVP)
 
-## 5\. Como Começar
+The methodology for this MVP uses the following technologies:
 
-### Pré-requisitos
+* **Backend:** Python (FastAPI) and Node.js for agent services.
+* **Protocols:** A2A (Agent-to-Agent) for horizontal communication (Agent-Agent) and MCP (Model Context Protocol) for vertical communication (Agent-Tool), over HTTP(S) with JSON-RPC 2.0.
+* **Database:** PostgreSQL for persistent storage of Gateway registries, manifests, and metrics.
+* **Messaging:** Redis Streams or NATS for asynchronous communication and task state management.
+* **Monitoring:** Prometheus + Grafana stack for real-time performance metrics (latency, success rate).
+* **LLMs (Reasoning Engines):** Models such as Granite, Mistral, and Llama2 (via API) for the Principal Agent.
 
-  * Python 3.9+
-  * PostgreSQL
-  * Redis ou NATS
+---
 
-### Instalação
+## 5. Getting Started
 
-1.  Clone este repositório:
+### Prerequisites
 
-    ```bash
-    git clone https://github.com/seu-usuario/aegis.git
-    cd aegis
-    ```
+* Python 3.9+
+* PostgreSQL
+* Redis or NATS
 
-2.  Crie e ative um ambiente virtual:
+### Installation
 
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    ```
+1. Clone this repository:
 
-3.  Instale as dependências:
+   ```bash
+   git clone https://github.com/your-username/aegis.git
+   cd aegis
+   ```
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+2. Create and activate a virtual environment:
 
-4.  Configure suas variáveis de ambiente (crie um arquivo `.env`):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
 
-    ```env
-    DATABASE_URL="postgresql://user:pass@localhost/aegis_db"
-    REDIS_URL="redis://localhost:6379"
-    # ... outras configurações
-    ```
+3. Install dependencies:
 
-### Executando os Serviços
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-1.  **Iniciar o Gateway Agent:**
+4. Configure your environment variables (create a `.env` file):
 
-    ```bash
-    uvicorn Aegis.core.gateway_agent.main:app --host 0.0.0.0 --port 8000
-    ```
+   ```env
+   DATABASE_URL="postgresql://user:pass@localhost/aegis_db"
+   REDIS_URL="redis://localhost:6379"
+   # ... other configurations
+   ```
 
-2.  **Iniciar o Principal Agent:**
+---
 
-    ```bash
-    uvicorn Aegis.core.principal_agent.main:app --host 0.0.0.0 --port 8001
-    ```
+### Running the Services
 
-## 6\. Fluxo de Execução (Exemplo MVP)
+1. **Start the Gateway Agent:**
 
-1.  Um **Agente de Recurso** (ex: `WeatherAgent`) envia seus metadados (manifesto, schema da API, capacidades) para o endpoint `REGISTER_RESOURCE` do **Gateway Agent**.
-2.  O **Gateway Agent** valida o recurso (executando testes de saúde) e o armazena, indexando-o por `id` e `capabilities`.
-3.  Um usuário envia uma solicitação (ex: "Qual a previsão do tempo em São Paulo?") para o **Principal Agent**.
-4.  O **Principal Agent** usa seu motor de raciocínio (ex: ReAct) para decompor a solicitação na tarefa `Task(description="obter_previsao_tempo", requirements=["weather", "location:São Paulo"])`.
-5.  O **Principal Agent** consulta o **Gateway Agent** (via `QUERY_RESOURCES`) por agentes que satisfaçam os `requirements`.
-6.  O **Gateway Agent** busca em seu `capability_index`, encontra o `WeatherAgent`, classifica-o com base em suas métricas de QoS (latência, taxa de sucesso) e retorna seus detalhes.
-7.  O **Principal Agent** usa o protocolo A2A para delegar a `Task` ao endpoint do `WeatherAgent`.
-8.  O `WeatherAgent` executa a tarefa e retorna o resultado.
-9.  O **Principal Agent** atualiza suas métricas de execução no Gateway e retorna a resposta final ao usuário.
+   ```bash
+   uvicorn Aegis.core.gateway_agent.main:app --host 0.0.0.0 --port 8000
+   ```
+
+2. **Start the Principal Agent:**
+
+   ```bash
+   uvicorn Aegis.core.principal_agent.main:app --host 0.0.0.0 --port 8001
+   ```
+
+---
+
+## 6. Execution Flow (MVP Example)
+
+1. A **Resource Agent** (e.g., `WeatherAgent`) sends its metadata (manifest, API schema, capabilities) to the **Gateway Agent**’s `REGISTER_RESOURCE` endpoint.
+2. The **Gateway Agent** validates the resource (performing health checks) and stores it, indexing by both `id` and `capabilities`.
+3. A user sends a request (e.g., “What’s the weather forecast in São Paulo?”) to the **Principal Agent**.
+4. The **Principal Agent** uses its reasoning engine (e.g., ReAct) to decompose the request into a task:
+   `Task(description="get_weather_forecast", requirements=["weather", "location:São Paulo"])`.
+5. The **Principal Agent** queries the **Gateway Agent** (via `QUERY_RESOURCES`) for agents that satisfy the `requirements`.
+6. The **Gateway Agent** looks up its `capability_index`, finds the `WeatherAgent`, ranks it based on QoS metrics (latency, success rate), and returns its details.
+7. The **Principal Agent** uses the A2A protocol to delegate the `Task` to the `WeatherAgent`’s endpoint.
+8. The `WeatherAgent` executes the task and returns the result.
+9. The **Principal Agent** updates execution metrics in the Gateway and returns the final response to the user.
+
 
