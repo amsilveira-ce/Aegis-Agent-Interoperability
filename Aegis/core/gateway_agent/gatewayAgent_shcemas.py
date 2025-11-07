@@ -24,4 +24,3 @@ class RegisteredResource:
     avg_response_time: float = 0.0
     is_active: bool = True
 
-
