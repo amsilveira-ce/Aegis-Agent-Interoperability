@@ -30,7 +30,6 @@ class PrincipalAgent:
 
 
         # Context management
-        # might change based on a2a protocol 
         self.context = {
             "conversation_history": [],
             "user_preferences": {},
@@ -62,7 +61,44 @@ class PrincipalAgent:
         """
         logger.info(f"Planning task: {user_request}")
 
-        task = []
+        tasks = []
+
+        # Make simple rule based for mvp testing 
+        if "calculate" in user_request.lower():
+            tasks.append(Task(
+                id=str(uuid.uuid4()),
+                description="Perform arithmetic calculation",
+                requirements=["arithmetic", "math"],
+                context={"input": user_request}
+            ))
+
+        if "search" in user_request.lower():
+            tasks.append(Task(
+                id=str(uuid.uuid4()),
+                description="Search for information",
+                requirements=["search", "information_retrieval"],
+                context={"query": user_request}
+            ))
+
+        if "analyze" in user_request.lower():
+            tasks.append(Task(
+                id=str(uuid.uuid4()),
+                description="Analyze data",
+                requirements=["data_analysis", "statistics"],
+                context={"data": user_request}
+            ))
+
+         # Default task if no specific pattern matched
+        if not tasks:
+            tasks.append(Task(
+                id=str(uuid.uuid4()),
+                description=user_request,
+                requirements=["general"],
+                context={"original_request": user_request}
+            ))
+        
+        self.task_queue.extend(tasks)
+        return tasks
 
     async def request_resources(self, task: Task) -> List[Resource]:
         pass
