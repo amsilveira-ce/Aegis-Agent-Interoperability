@@ -13,17 +13,120 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 class A2AProtocolClient:
 
-    def __init__(self):
-        pass 
+    def __init__(self, client_id: str = None):
+        self.client_id = client_id or f"principal-agent-{id(self)}"
+        self.session = None
+        self._connected_agents: Dict[str, Dict] = {}
 
+        logger.info(f"A2A Protocol Client initialized: {self.client_id}")
+
+
+    async def connect(self) -> bool:
+        """Initialize A2A client connection"""
+        try:
+            
+            self.session = httpx.AsyncClient(
+                timeout=httpx.Timeout(30.0),
+                limits=httpx.Limits(max_keepalive_connections=10)
+            )
+            logger.info("A2A client connected")
+
+            return True
+        
+        except Exception as e:
+            logger.error(f"Failed to connect A2A client: {e}")
+            return False
+        
     async def invoke_agent(
             self, 
             endpoint: str, 
             task_desc: str, 
             context: Dict[str, Any]) -> Dict[str, Any]:
         
+
+        try:
+            logger.info(f"A2A: Invoking agent at {endpoint} for task: '{task_desc}'")
+
+            # Current implementation using A2A protocol structure - can be replaced for the oficial sdk later 
+            request_payload = {
+                    "jsonrpc": "2.0",
+                    "method": "agent.invoke",
+                    "params": {
+                        "task": {
+                            "description": task_desc,
+                            "context": context,
+                            "requester_id": self.client_id
+                        }
+                    },
+                    "id": f"req_{id(self)}_{asyncio.get_event_loop().time()}"
+            }
+
+            response = await self.session.post(
+                    f"{endpoint}/a2a/invoke",
+                    json=request_payload,
+
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-A2A-Client-ID": self.client_id
+                    }
+            )
+
+            response.raise_for_status()
+            result = response.json()
+
+            if "error" in result:
+                logger.error(f"A2A invocation error: {result['error']}")
+                return {"error": result["error"]}
+            
+            return result.get("result", {})
         
-        pass
+        except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error invoking agent: {e.response.status_code}")
+                return {"error": f"HTTP {e.response.status_code}"}
+        
+        except Exception as e:
+            logger.error(f"Failed to invoke agent at {endpoint}: {e}")
+            return {"error": str(e)}
+    
+    async def discover_agent(self, endpoint: str):
+        """
+        Discover an agent's capabilities via A2A protocol.
+        
+        Args:
+            endpoint: Agent's A2A endpoint
+            
+        Returns:
+            Agent card with capabilities
+        """
+        try:
+            
+            # For now, using HTTP with A2A protocol structure
+            response = await self.session.get(
+               
+                f"{endpoint}/a2a/agent-card",
+                headers={"Accept": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                agent_card = response.json()
+                self._connected_agents[endpoint] = agent_card
+                logger.info(f"Discovered agent at {endpoint}: {agent_card.get('name')}")
+                return agent_card
+            else:
+                logger.warning(f"Failed to discover agent at {endpoint}: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error discovering agent at {endpoint}: {e}")
+            return None
+
+    async def disconnect(self):
+        """Disconnect A2A client"""
+        if self.session:
+            await self.session.aclose()
+        logger.info("A2A client disconnected")
+
+
 
 
 
