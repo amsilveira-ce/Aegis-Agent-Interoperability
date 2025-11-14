@@ -127,21 +127,123 @@ class A2AProtocolClient:
         logger.info("A2A client disconnected")
 
 
-
-
-
 class MCPClient:
 
-    def __init__(self):
-        pass 
+    def __init__(self, client_name: str = None):
+        self.client_name = client_name or f"mcp-client-{id(self)}"
+        self.session = None
+        self._discovered_tools: Dict[str, List[Dict]] = {}
+        
+       
+        logger.info(f"MCP Client initialized: {self.client_name}")
 
+    async def connect(self) -> bool:
+        try:     
+            
+            self.session = httpx.AsyncClient(
+                timeout=httpx.Timeout(10.0),
+                limits=httpx.Limits(max_keepalive_connections=20)
+            )
+            logger.info("MCP client connected")
+            return True
+        
+        except Exception as e:
+            logger.error(f"Failed to connect MCP client: {e}")
+            return False
+        
+    async def list_tools(self, endpoint: str) -> List[Dict[str, Any]]:
+        """
+        List available tools from an MCP server.
+        
+        Args:
+            endpoint: MCP server endpoint
+            
+        Returns:
+            List of tool definitions
+        """
+        try:
+                      
+            response = await self.session.post(
+                f"{endpoint}/mcp/list",
+                json={
+                    "jsonrpc": "2.0",
+                    "method": "tools/list",
+                    "id": 1
+                }
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                tools = result.get("result", {}).get("tools", [])
+                self._discovered_tools[endpoint] = tools
+                logger.info(f"Discovered {len(tools)} tools at {endpoint}")
+                return tools
+            else:
+                logger.warning(f"Failed to list tools at {endpoint}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error listing tools at {endpoint}: {e}")
+            return []
+    
     async def invoke_tool(
             self, 
             endpoint: str, 
             tool_name: str=None,
             params: Dict[str, Any] = None) -> Dict[str,Any]:
         
-        pass
+        logger.info(f"MCP: Invoking tool{f' {tool_name}' if tool_name else ''} at {endpoint}")
+        try:
+            if "/mcp" in endpoint:
+     
+                request_payload = {
+                    "jsonrpc": "2.0",
+                    "method": "tools/call",
+                    "params": {
+                        "name": tool_name or "default",
+                        "arguments": params or {}
+                    },
+                    "id": f"tool_{id(self)}_{asyncio.get_event_loop().time()}"
+                }
+                
+                response = await self.session.post(
+                    endpoint if "/mcp" in endpoint else f"{endpoint}/mcp/call",
+                    json=request_payload
+                )
+
+            else:
+                # Simple REST API
+                response = await self.session.post(
+                    endpoint,
+                    json=params or {}
+                )
+            
+            response.raise_for_status()
+            result = response.json()
+            
+            
+            if "result" in result:
+                return result["result"]
+            
+            elif "error" in result:
+                logger.error(f"MCP tool error: {result['error']}")
+                return {"error": result["error"]}
+            else:
+                return result
+            
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error invoking tool: {e.response.status_code}")
+            return {"error": f"HTTP {e.response.status_code}"}
+        except Exception as e:
+            logger.error(f"Failed to invoke tool at {endpoint}: {e}")
+            return {"error": str(e)}
+
+    async def disconnect(self):
+        """Disconnect MCP client"""
+        if self.session:
+            await self.session.aclose()
+        logger.info("MCP client disconnected")
+
 
 
 class UnifiedProtocolClient:
